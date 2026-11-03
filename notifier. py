@@ -1,0 +1,72 @@
+import os
+import requests
+import hashlib
+import json
+
+BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
+SENT_FILE = "sent_signals.json"
+
+
+def load_sent():
+    try:
+        with open(SENT_FILE, "r") as f:
+            return set(json.load(f))
+    except Exception:
+        return set()
+
+
+def save_sent(sent):
+    with open(SENT_FILE, "w") as f:
+        json.dump(list(sent), f)
+
+
+def send_signal(signal):
+    if not BOT_TOKEN or not CHAT_ID:
+        print("Telegram belum dikonfigurasi.")
+        return False
+
+    key = hashlib.sha256(
+        f"{signal['symbol']}-{signal['direction']}-"
+        f"{signal['entry']}".encode()
+    ).hexdigest()
+
+    sent = load_sent()
+
+    if key in sent:
+        return False
+
+    message = (
+        "🤖 TAFI AI SIGNAL\n\n"
+        f"COIN: {signal['symbol']}\n"
+        f"ARAH: {signal['direction']}\n"
+        f"SCORE: {signal['score']}/100\n\n"
+        f"ENTRY: {signal['entry']}\n"
+        f"STOP LOSS: {signal['sl']}\n"
+        f"TP1: {signal['tp1']}\n"
+        f"TP2: {signal['tp2']}\n\n"
+        "Analisis otomatis TAFI.\n"
+        "Periksa risiko sebelum entry."
+    )
+
+    try:
+        response = requests.post(
+            f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+            data={
+                "chat_id": CHAT_ID,
+                "text": message
+            },
+            timeout=15
+        )
+        response.raise_for_status()
+
+        if response.json().get("ok"):
+            sent.add(key)
+            save_sent(sent)
+            return True
+
+    except Exception as error:
+        print("Telegram error:", error)
+
+    return False
