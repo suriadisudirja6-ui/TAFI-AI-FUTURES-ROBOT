@@ -1,0 +1,28 @@
+name: TAFI Robot Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Get TAFI Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Requirements
+        run: pip install -r requirements.txt
+
+      - name: Check Python Syntax
+        run: python -m py_compile main.py notifier.py run.py
+
+      - name: Check Imports
+        run: python -c "import main, notifier, run; print('TAFI OK')"
